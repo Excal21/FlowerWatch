@@ -63,7 +63,7 @@ const char home[] PROGMEM = R"rawliteral(<!DOCTYPE html>
   <div>
     <nav class="navbar navbar-expand-lg bg-dark" data-bs-theme="dark">
       <div class="container-fluid">
-        <a class="navbar-brand" href="#">Virágfigyelő</a>
+        <a class="navbar-brand" href="/">Virágfigyelő</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor02"
           aria-controls="navbarColor02" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
@@ -184,10 +184,10 @@ const char home[] PROGMEM = R"rawliteral(<!DOCTYPE html>
             <input type="text" readonly="" class="form-control-plaintext" id="prefemail"
               value="example@example.com">
           </div>
-
-
-
         </div>
+
+
+
         <div class="form-group also">
           <input name="emailin" type="email" class="form-control" style="margin-bottom: 20px;" id="exampleInputEmail1" aria-describedby="emailHelp"
             placeholder="Ezen a címen fog értesíteni a növényfigyelő">
@@ -195,8 +195,8 @@ const char home[] PROGMEM = R"rawliteral(<!DOCTYPE html>
     
 
 
-        <input type="submit" class="btn btn-primary also" value="Beállít">
-        <input type="button" class="btn btn-primary also" value="Fotó küldése" style="margin-left: 10px;" onclick="sendPhoto()">
+        <input type="submit" class="btn btn-primary also" value="Beállít" href="/">
+        <button type="button" class="btn btn-primary also" style="margin-left: 10px;" onclick="sendPhoto()">Fotó küldése</button>
       </fieldset>
     </form>
   </div>

@@ -84,7 +84,7 @@ void capturePhotoSaveLittleFS( void ) {
   esp_camera_fb_return(fb);
 }
 
-void sendPhoto(email_data email) {
+void sendPhoto(email_data& email) {
   
   /** Enable the debug via Serial port
    * none debug or 0
@@ -105,8 +105,8 @@ void sendPhoto(email_data email) {
   See https://en.wikipedia.org/wiki/Time_zone for a list of the GMT/UTC timezone offsets
   */
   config.time.ntp_server = F("pool.ntp.org,time.nist.gov");
-  config.time.gmt_offset = 0;
-  config.time.day_light_offset = 1;
+  config.time.gmt_offset = 1;
+  config.time.day_light_offset = 0;
 
   /* Set the session config */
   config.server.host_name = email.smtpServer;
@@ -197,7 +197,7 @@ void smtpCallback(SMTP_Status status){
   }
 }
 
-void captureAndSendPhoto(email_data emaildata){
+void captureAndSendPhoto(email_data& emaildata){
   capturePhotoSaveLittleFS();
   sendPhoto(emaildata);
 }

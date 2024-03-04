@@ -53,6 +53,8 @@ String emailaddress;
 //Segédváltozók (runtime)
 float temp;
 float humidity;
+float lux;
+float soil;
 bool mts = false;
 
 JSONVar jsonValues;
@@ -61,6 +63,7 @@ JSONVar jsonPrefs;
 unsigned long lastTime = 0;
 unsigned long timerDelay = 30000;
 
+unsigned long lastTimeReadDHT11 = 0;
 
 
 void setEmailParams(void){
@@ -72,6 +75,7 @@ void setEmailParams(void){
   email.subject = "";
   email.htmlMsg = "";
 }
+
 
 
 
@@ -88,22 +92,10 @@ String getPreferences(void){
 
 String getSensorReadings(void)
 {
-  float current_temp = dht.getTemperature();
-  float current_humidity = dht.getHumidity();
-  if (!(isnan(current_temp) || isnan(humidity)))
-  {
-    temp = current_temp;
-    humidity = current_humidity;
-  }
-
-  float read_voltage = adc.readADC(1) / 1024. * 3.28;
-  float lux = read_voltage * 100. / 0.6;
-
-
-  jsonValues["temp"] = String(temp);
-  jsonValues["humidity"] = String(humidity);
-  jsonValues["soil"] = String(adc.readADC(0));
-  jsonValues["light"] = String(int(lux));
+  jsonValues["temp"] = temp;
+  jsonValues["humidity"] = humidity;
+  jsonValues["soil"] = soil;
+  jsonValues["light"] = int(lux);
 
   String jsonString = JSON.stringify(jsonValues);
   return jsonString;
@@ -182,9 +174,19 @@ void setup()
   //     (sck, mosi, miso, cs);
   adc.begin(14, 13, 15, 12); //Fordítva a nyák miatt
   delay(1000);
-  Serial.println("Szenzorok inicializálva!");
+
   temp = dht.getTemperature();
   humidity = dht.getHumidity();
+  float read_voltage = adc.readADC(1) / 1024. * 3.28;
+  lux = read_voltage * 100. / 0.6;
+
+  soil = 100. - adc.readADC(0) / 530.;
+
+
+
+
+  Serial.println("Szenzorok inicializálva!");
+
   Serial.print("Kezdeti hőmérséklet: "); Serial.println(temp);
   Serial.print("Kezdeti páratartalom: "); Serial.println(humidity);
 
@@ -245,12 +247,12 @@ void setup()
                     if(p->name() == html_email){
                       Serial.print("Beállított emailcím: ");
                       if(p->value() != "")
-                      emailaddress = p->value().c_str();
+                      emailaddress = p->value();
                       Serial.println(p->value());
                     }
                   
                 }
-                request->send(200, "text/html", home);
+                request->send_P(200, "text/html", home);
               });
 
     server.begin();
@@ -264,15 +266,37 @@ void setup()
 
 void loop()
 {
-  if ((millis() - lastTime) > timerDelay)
+  if (ws.count() > 0 && (millis() - lastTime) > timerDelay)
   {
-    String sensorReadings = getSensorReadings();
+    //30 másodpercenként fut
+    const String& sensorReadings = getSensorReadings();
     Serial.println(sensorReadings);
     notifyClients(sensorReadings);
 
     lastTime = millis();
+    
+    ws.cleanupClients();
   }
-  ws.cleanupClients();
+
+  if ((millis() - lastTimeReadDHT11) > 2000)
+  {
+    float current_temp = dht.getTemperature();
+    float current_humidity = dht.getHumidity();
+    if (!(isnan(current_temp) || isnan(humidity)))
+    {
+      temp = current_temp;
+      humidity = current_humidity;
+    }
+
+      float read_voltage = adc.readADC(1) / 1024. * 3.28;
+      lux = read_voltage * 100. / 0.6;
+
+      soil = 100. - ((adc.readADC(0)-130) / 5.35);
+
+
+    lastTimeReadDHT11 = millis();
+  }
+
 
 
   if (mts)
@@ -282,8 +306,9 @@ void loop()
   }
   if(led){
     digitalWrite(33,0);
-    delay(1000);
+    delay(500);
     digitalWrite(33, 1);
+    delay(400);
   }
-  delay(1000);
+  delay(50);
 }

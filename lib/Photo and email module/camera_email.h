@@ -57,9 +57,9 @@ void initCamera(void);
 
 
 void capturePhotoSaveLittleFS(void);
-void sendPhoto(email_data email);
+void sendPhoto(email_data& email);
 void smtpCallback(SMTP_Status status);
-void captureAndSendPhoto(email_data emaildata);
+void captureAndSendPhoto(email_data& emaildata);
 
 
 
