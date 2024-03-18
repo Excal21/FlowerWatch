@@ -17,3 +17,8 @@ Változtatások
 - 2024.03.04. - src/main.cpp: email_data struktúra példányai referenciával adódnak át
 - 2024.03.04. - lib/Photo and email module/camera_email.cpp: email_data struktúra referenciaként adódik át
 - 2024.03.04. - lib/Photo and email module/camera_email.h: email_data struktúra referencia az argumentumokban
+- 2024.03.18. - src/main.cpp: Weblap handler eljárások ki lettek szervezve a setupból és régiókba lettek rendezve
+- 2024.03.18. - src/main.cpp: JSON string builderek régióba rendezve
+- 2024.03.18. - lib/Photo and email module/camera.cpp: capturePhotoSaveLittleFS és captureAndSendPhoto argumentuma bool értéket (is) kér későbbi vaku funkcionalitáshoz
+- 2024.03.18. - lib/Photo and email module/camera.h: capturePhotoSaveLittleFS és captureAndSendPhoto argumentuma bool értéket (is) kér későbbi vaku funkcionalitáshoz
+- 2024.03.18. - lib/Photo and email module/camera.cpp: a "flash" bool változó True értéke esetén fényképezéskor a 4-es számú pin (vaku) 1 értéket vesz fel, majd visszaáll 0-ra
