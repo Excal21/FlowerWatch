@@ -44,7 +44,7 @@ void initCamera(void){   //Kamera inicializálása
   }
 }
 
-void capturePhotoSaveLittleFS( void ) {
+void capturePhotoSaveLittleFS(bool flash) {
   // Dispose first pictures because of bad quality
   camera_fb_t* fb = NULL;
   // Skip first 3 frames (increase/decrease number as needed).
@@ -53,7 +53,8 @@ void capturePhotoSaveLittleFS( void ) {
     esp_camera_fb_return(fb);
     fb = NULL;
   }
-    
+  
+  if(flash) digitalWrite(4, 1);
   // Take a new photo
   fb = NULL;  
   fb = esp_camera_fb_get();  
@@ -62,7 +63,7 @@ void capturePhotoSaveLittleFS( void ) {
     delay(1000);
     ESP.restart();
   }  
-
+  digitalWrite(4, 0);
   // Photo file name
   Serial.printf("Picture file name: %s\n", FILE_PHOTO_PATH);
   File file = LittleFS.open(FILE_PHOTO_PATH, FILE_WRITE);
@@ -197,8 +198,8 @@ void smtpCallback(SMTP_Status status){
   }
 }
 
-void captureAndSendPhoto(email_data& emaildata){
-  capturePhotoSaveLittleFS();
+void captureAndSendPhoto(email_data& emaildata, bool flash){
+  capturePhotoSaveLittleFS(flash);
   sendPhoto(emaildata);
 }
 

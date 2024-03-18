@@ -45,8 +45,8 @@ Preferences p;
 // https://github.com/mobizt/ESP-Mail-Client
 
 //Beállítások
-int minimum_moisture = 30;
-int maximum_temp = 40;
+int minsoil = 30;
+int maxtemp = 40;
 bool led = true;
 String emailaddress;
 
@@ -66,7 +66,7 @@ unsigned long timerDelay = 30000;
 unsigned long lastTimeReadDHT11 = 0;
 
 
-void setEmailParams(void){
+void setEmailParams(){
   email.name = "";
   email.recipient = "";
 
@@ -76,21 +76,32 @@ void setEmailParams(void){
   email.htmlMsg = "";
 }
 
+void readSettings(email_data& email){
+  p.begin("Settings", true);
+  maxtemp = p.getInt("maxtemp");
+  minsoil = p.getInt("minsoil");
+  led = p.getBool("led");
+  email.recipient = p.getString("emailaddress").c_str();
+  p.end();
+}
 
 
 
-String getPreferences(void){
+#pragma region StringBuilders
+
+String getPreferences(){
   jsonPrefs["prefemail"] = emailaddress;
   Serial.print("Led: "); Serial.println(led);
   jsonPrefs["prefled"] = led ? 1 : 0;
-  jsonPrefs["prefsoilmin"] = minimum_moisture;
-  jsonPrefs["preftempmax"] = maximum_temp;
+  jsonPrefs["prefsoilmin"] = minsoil;
+  jsonPrefs["preftempmax"] = maxtemp;
 
   String jsonstring = JSON.stringify(jsonPrefs);
   return jsonstring;
 }
 
-String getSensorReadings(void)
+
+String getSensorReadings()
 {
   jsonValues["temp"] = temp;
   jsonValues["humidity"] = humidity;
@@ -100,6 +111,10 @@ String getSensorReadings(void)
   String jsonString = JSON.stringify(jsonValues);
   return jsonString;
 }
+
+#pragma endregion StringBuilders
+
+#pragma region WEBHandlers
 
 void notifyClients(const String &sensorReadings)
 {
@@ -153,42 +168,111 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
   }
 }
 
-void initWebSocket(void)
+void onSettings(AsyncWebServerRequest* request)
+{
+  p.begin("Settings");
+  int params = request->params();
+  for (int i = 0; i < params; i++)
+  {
+    AsyncWebParameter *param = request->getParam(i);
+
+    // HTTP POST input1 value (direction)
+    if (param->name() == html_soil)
+    {
+      if (p.getInt("minsoil") != param->value().toInt())
+      {
+        p.putInt("minsoil", param->value().toInt());
+        Serial.println("Talajnedvesség mentve flashre!");
+      }
+      minsoil = param->value().toInt();
+      Serial.print("Beállított nedvesség: ");
+      Serial.println(minsoil);
+    }
+    // HTTP POST input2 value (steps)
+    if (param->name() == html_led)
+    {
+      if (p.getBool("led") != (bool)(param->value().toInt()))
+      {
+        p.putBool("led", (bool)(param->value().toInt()));
+        Serial.println("LED állapota mentve flashre!");
+      }
+      Serial.print("LED beállítása: ");
+      led = param->value().toInt();
+      Serial.println(led);
+    }
+    if (param->name() == html_temp)
+    {
+      if (p.getInt("maxtemp") != param->value().toInt())
+      {
+        p.putInt("maxtemp", param->value().toInt());
+        Serial.println("Maximum hőmérséklet mentve flashre!");
+      }
+      Serial.print("Hőmérséklet beállítása: ");
+      maxtemp = param->value().toInt();
+      Serial.println(param->value());
+    }
+    if (param->name() == html_email)
+    {
+      if (p.getString("emailaddress") != param->value() && param->value() != "")
+      {
+        p.putString("emailaddress", param->value().c_str());
+        Serial.println("Email cím mentve flashre!");
+      }
+      Serial.print("Beállított emailcím: ");
+      if (param->value() != "")
+        emailaddress = param->value();
+      Serial.println(param->value());
+    }
+  }
+  p.end();
+  request->send_P(200, "text/html", home);
+}
+
+
+void onGet(AsyncWebServerRequest* request){
+  Serial.println("ESP32 Web Server: Új kérés:"); // for debugging
+  Serial.println("GET /");                       // for debugging
+  request->send_P(200, "text/html", home);
+}
+
+
+void initWebSocket()
 {
 
   ws.onEvent(onEvent);
   server.addHandler(&ws);
 }
 
-
+#pragma endregion WEBHandlers
 
 
 void setup()
 {
   Serial.begin(9600);
-  emailaddress = "example@example.com";
-  led = true;
   pinMode(33, OUTPUT); //Beépített LED
+  pinMode(4, OUTPUT); //Vaku
+  digitalWrite(33, 0);
+  readSettings(email);
   dht.setup(2, DHTesp::DHT11);
-  //adc.begin(12, 15, 13, 14); //<---- EZ már a jó!!!
   //     (sck, mosi, miso, cs);
-  adc.begin(14, 13, 15, 12); //Fordítva a nyák miatt
+  adc.begin(14, 13, 15, 12);
   delay(1000);
 
+
+
+  //Kezdeti mérések induláskor
   temp = dht.getTemperature();
   humidity = dht.getHumidity();
   float read_voltage = adc.readADC(1) / 1024. * 3.28;
   lux = read_voltage * 100. / 0.6;
-
   soil = 100. - adc.readADC(0) / 530.;
 
 
 
-
   Serial.println("Szenzorok inicializálva!");
-
   Serial.print("Kezdeti hőmérséklet: "); Serial.println(temp);
   Serial.print("Kezdeti páratartalom: "); Serial.println(humidity);
+
 
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // Brownout érzékelő kikapcsolása
 
@@ -208,61 +292,21 @@ void setup()
     ESP_MAIL_DEFAULT_FLASH_FS.begin();
     initCamera();
     setEmailParams();
-    //captureAndSendPhoto(email);
-
-
-
     initWebSocket();
-    delay(200);
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-              {
-                Serial.println("ESP32 Web Server: New request received:"); // for debugging
-                Serial.println("GET /");                                   // for debugging
-                request->send_P(200, "text/html", home);
-              });
 
-    server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request)
-              {
-                int params = request->params();
-                for(int i = 0 ; i < params; i++){
-                  AsyncWebParameter* p = request->getParam(i);
-                  
-                    // HTTP POST input1 value (direction)
-                    if (p->name() == html_soil) {
-                      Serial.print("Beállított nedvesség: ");
-                      minimum_moisture = p->value().toInt();
-                      Serial.println(p->value());
-                    }
-                    // HTTP POST input2 value (steps)
-                    if (p->name() == html_led) {
-                      Serial.print("LED beállítása: ");
-                      led = p->value().toInt();
-                      Serial.println(p->value());
-                    }
-                    if (p->name() == html_temp){
-                      Serial.print("Hőmérséklet beállítása: ");
-                      maximum_temp = p -> value().toInt();
-                      Serial.println(p -> value());
-                    }
-                    if(p->name() == html_email){
-                      Serial.print("Beállított emailcím: ");
-                      if(p->value() != "")
-                      emailaddress = p->value();
-                      Serial.println(p->value());
-                    }
-                  
-                }
-                request->send_P(200, "text/html", home);
-              });
+    delay(200);
+    server.on("/", HTTP_GET, onGet);
+    server.on("/get", HTTP_GET, onSettings);
 
     server.begin();
-
-    // MCP3008 ADC - https://github.com/adafruit/Adafruit_MCP3008
 
     delay(2000);
 
   }
+  digitalWrite(33, 1);
 }
+
+
 
 void loop()
 {
@@ -280,6 +324,7 @@ void loop()
 
   if ((millis() - lastTimeReadDHT11) > 2000)
   {
+    //2 másodpercenként fut
     float current_temp = dht.getTemperature();
     float current_humidity = dht.getHumidity();
     if (!(isnan(current_temp) || isnan(humidity)))
@@ -287,21 +332,17 @@ void loop()
       temp = current_temp;
       humidity = current_humidity;
     }
+    float read_voltage = adc.readADC(1) / 1024. * 3.28;
+    lux = read_voltage * 100. / 0.6;
 
-      float read_voltage = adc.readADC(1) / 1024. * 3.28;
-      lux = read_voltage * 100. / 0.6;
-
-      soil = 100. - ((adc.readADC(0)-130) / 5.35);
-
+    soil = 100. - ((adc.readADC(0) - 130) / 5.30);
 
     lastTimeReadDHT11 = millis();
   }
 
-
-
   if (mts)
   {
-    captureAndSendPhoto(email);
+    captureAndSendPhoto(email, 1);
     mts = false;
   }
   if(led){
