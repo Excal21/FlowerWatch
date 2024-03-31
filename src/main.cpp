@@ -27,10 +27,10 @@
 const char* html_soil = "soilin";
 const char* html_temp = "tempin";
 const char* html_led = "ledin";
+const char* html_flash = "flashin";
 const char* html_email = "emailin";
 
 
-email_data email;
 // Szenzorok
 DHTesp dht;
 Adafruit_MCP3008 adc;
@@ -45,10 +45,10 @@ Preferences p;
 // https://github.com/mobizt/ESP-Mail-Client
 
 //Beállítások
-int minsoil = 30;
-int maxtemp = 40;
+int minsoil = 0;
+int maxtemp = 50;
 bool led = true;
-String emailaddress;
+bool flash = true;
 
 //Segédváltozók (runtime)
 float temp;
@@ -56,6 +56,7 @@ float humidity;
 float lux;
 float soil;
 bool mts = false;
+bool ack = false;
 
 JSONVar jsonValues;
 JSONVar jsonPrefs;
@@ -64,35 +65,45 @@ unsigned long lastTime = 0;
 unsigned long timerDelay = 30000;
 
 unsigned long lastTimeReadDHT11 = 0;
+unsigned long lastTimeSwitched = 0;
+bool ison = false;
 
+email_data email;
+
+
+
+#pragma region Settings
 
 void setEmailParams(){
-  email.name = "";
-  email.recipient = "";
-
   email.sender = "";
   email.password = "";
-  email.subject = "";
-  email.htmlMsg = "";
+  email.subject = "Növényke";
+  email.name = "";
+  email.htmlMsg = "<p>Szia!</p><p>Kértél egy fotót :)</p>";
 }
 
-void readSettings(email_data& email){
+void readSettings(){
   p.begin("Settings", true);
   maxtemp = p.getInt("maxtemp");
   minsoil = p.getInt("minsoil");
   led = p.getBool("led");
-  email.recipient = p.getString("emailaddress").c_str();
+  flash = p.getBool("flash");
+  email.recipient = p.getString("emailaddress");
+  Serial.println(email.recipient);
   p.end();
 }
 
-
+#pragma endregion Settings
 
 #pragma region StringBuilders
 
 String getPreferences(){
-  jsonPrefs["prefemail"] = emailaddress;
+  Serial.println("Preferencia");
+  Serial.println(email.recipient);
+  jsonPrefs["prefemail"] = email.recipient;
   Serial.print("Led: "); Serial.println(led);
   jsonPrefs["prefled"] = led ? 1 : 0;
+  jsonPrefs["prefflash"] = flash ? 1 : 0;
   jsonPrefs["prefsoilmin"] = minsoil;
   jsonPrefs["preftempmax"] = maxtemp;
 
@@ -121,14 +132,13 @@ void notifyClients(const String &sensorReadings)
   ws.textAll(sensorReadings);
 }
 
-void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len, email_data& email)
 {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
   {
     data[len] = 0;
 
-    // Check if the message is "getReadings"
     if(strcmp((char*)data, "getPreferences")){
       const String& prefs = getPreferences();
       Serial.println(prefs);
@@ -138,7 +148,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
 
     if (strcmp((char *)data, "getReadings") == 0)
     {
-      // if it is, send current sensor readings
       const String& sensorReadings = getSensorReadings();
       Serial.println(sensorReadings);
       notifyClients(sensorReadings);
@@ -160,7 +169,7 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
     Serial.printf("WebSocket client #%u disconnected\n", client->id());
     break;
   case WS_EVT_DATA:
-    handleWebSocketMessage(arg, data, len);
+    handleWebSocketMessage(arg, data, len, email);
     break;
   case WS_EVT_PONG:
   case WS_EVT_ERROR:
@@ -175,8 +184,6 @@ void onSettings(AsyncWebServerRequest* request)
   for (int i = 0; i < params; i++)
   {
     AsyncWebParameter *param = request->getParam(i);
-
-    // HTTP POST input1 value (direction)
     if (param->name() == html_soil)
     {
       if (p.getInt("minsoil") != param->value().toInt())
@@ -188,7 +195,6 @@ void onSettings(AsyncWebServerRequest* request)
       Serial.print("Beállított nedvesség: ");
       Serial.println(minsoil);
     }
-    // HTTP POST input2 value (steps)
     if (param->name() == html_led)
     {
       if (p.getBool("led") != (bool)(param->value().toInt()))
@@ -199,6 +205,18 @@ void onSettings(AsyncWebServerRequest* request)
       Serial.print("LED beállítása: ");
       led = param->value().toInt();
       Serial.println(led);
+    }
+
+    if (param->name() == html_flash)
+    {
+      if (p.getBool("flash") != (bool)(param->value().toInt()))
+      {
+        p.putBool("flash", (bool)(param->value().toInt()));
+        Serial.println("Vakubeállítás mentve flashre!");
+      }
+      Serial.print("Vaku beállítása: ");
+      flash = param->value().toInt();
+      Serial.println(flash);
     }
     if (param->name() == html_temp)
     {
@@ -220,8 +238,10 @@ void onSettings(AsyncWebServerRequest* request)
       }
       Serial.print("Beállított emailcím: ");
       if (param->value() != "")
-        emailaddress = param->value();
+        email.recipient = param->value();
       Serial.println(param->value());
+      Serial.print("Valójában beállított: ");
+      Serial.println(email.recipient);
     }
   }
   p.end();
@@ -230,8 +250,8 @@ void onSettings(AsyncWebServerRequest* request)
 
 
 void onGet(AsyncWebServerRequest* request){
-  Serial.println("ESP32 Web Server: Új kérés:"); // for debugging
-  Serial.println("GET /");                       // for debugging
+  Serial.println("ESP32 Web Server: Új kérés:");
+  Serial.println("GET /");                       
   request->send_P(200, "text/html", home);
 }
 
@@ -249,10 +269,12 @@ void initWebSocket()
 void setup()
 {
   Serial.begin(9600);
+  setEmailParams();
+
   pinMode(33, OUTPUT); //Beépített LED
   pinMode(4, OUTPUT); //Vaku
   digitalWrite(33, 0);
-  readSettings(email);
+  readSettings();
   dht.setup(2, DHTesp::DHT11);
   //     (sck, mosi, miso, cs);
   adc.begin(14, 13, 15, 12);
@@ -291,7 +313,6 @@ void setup()
     delay(1000);
     ESP_MAIL_DEFAULT_FLASH_FS.begin();
     initCamera();
-    setEmailParams();
     initWebSocket();
 
     delay(200);
@@ -342,14 +363,32 @@ void loop()
 
   if (mts)
   {
-    captureAndSendPhoto(email, 1);
+    email.htmlMsg = "<p>Szia!</p><p>Kértél egy fotót :)</p>";
+    captureAndSendPhoto(email, flash);
     mts = false;
   }
-  if(led){
-    digitalWrite(33,0);
-    delay(500);
-    digitalWrite(33, 1);
-    delay(400);
+
+  //Fél másodpercenként kapcsolja a visszajelző ledet
+  if(led && (millis() - lastTimeSwitched) > 500){
+    lastTimeSwitched = millis();
+    if(ison){
+      digitalWrite(33, 1);
+      ison = false;
+    }
+    else{
+      digitalWrite(33,0);
+      ison = true;
+    }
   }
-  delay(50);
+
+  if (!ack && (temp > maxtemp || soil < minsoil))
+  {
+    if(temp > maxtemp) email.htmlMsg = "<p>Szia!</p><p>Melegem van!</p>";
+    else if(soil < minsoil) email.htmlMsg = "<p>Szia!</p><p>Kérlek öntözz meg!</p>";
+    captureAndSendPhoto(email, flash);
+    ack = true;
+  }
+  else if (ack && (temp < maxtemp && soil > minsoil)){
+    ack = false;
+  }
 }

@@ -11,14 +11,15 @@
 
 
 struct email_data{
-    const char* sender ="";
-    const char* password ="";
-    const char* smtpServer = "smtp.gmail.com";
+    String recipient;
+    String htmlMsg;
     const int serverport = 465;
-    const char* subject ="";
-    const char* recipient ="";
-    const char* name = "User";
-    const char* htmlMsg = "<h1>Example text</h1>";
+
+    const char* sender;
+    const char* password;
+    const char* smtpServer = "smtp.gmail.com";
+    const char* subject;
+    const char* name;
 };
 
 
@@ -60,14 +61,6 @@ void capturePhotoSaveLittleFS(bool flash);
 void sendPhoto(email_data& email);
 void smtpCallback(SMTP_Status status);
 void captureAndSendPhoto(email_data& emaildata, bool flash);
-
-
-
-
-
-
-
-
 
 
 #endif
