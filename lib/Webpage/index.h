@@ -341,7 +341,7 @@ const char home[] PROGMEM = R"rawliteral(<!DOCTYPE html>
             document.getElementById(key).innerHTML = parseFloat(myObj[key]).toFixed(1) + " %";
             break;
           case "light":
-            document.getElementById(key).innerHTML = parseFloat(myObj[key]).toFixed(1) + " lux";
+            document.getElementById(key).innerHTML = parseFloat(myObj[key]).toFixed(1) + " lx";
             break;
         }
       }

@@ -287,7 +287,7 @@ void setup()
   humidity = dht.getHumidity();
   float read_voltage = adc.readADC(1) / 1024. * 3.28;
   lux = read_voltage * 100. / 0.6;
-  soil = 100. - adc.readADC(0) / 530.;
+  soil = 100. - ((adc.readADC(0) - 130) / 5.30);
 
 
 

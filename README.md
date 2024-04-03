@@ -5,6 +5,10 @@ Ebben a projektben egy figyelőrendszert készítek, mellyel webes felületen k�
 
 A projekt az ipar 4.0 tantárgyam beadandó feladataként készül, de szeretném, hogy ezen túlmutasson a későbbiekben és egy hobbisták számára könnyen összerakható és könnyen használható rendszer legyen a végeredmény.
 
+<p align="center">
+    <img src="cactus.jpg" />
+</p>
+
 Változtatások
 -------
 - 2024.03.04. - src/main.cpp: DHT11 értéke hiba esetén nem kerül GUI-ra
@@ -24,3 +28,5 @@ Változtatások
 - 2024.03.31. - src/main.cpp: nincs delay a loop()-ban, helyette változók segítségével időréselés történik
 - 2024.03.31. - lib/Webpage/index.h - Vaku gomb hozzáadva az oldalhoz és a forráslinkek frissítve
 - 2024.03.31. - src/main.cpp: a loop()-on belül meghívódik a captureAndSendPhoto(email, flash) metódus, hogyha a talaj túl száraz vagy a hőmérséklet túl magas
+- 2024.04.03. - src/main.cpp: kezdeti nedvességérték javítva
+- 2024.04.03. - lib/Webpage/index.h: lux mértékegysége javítva lx-re
