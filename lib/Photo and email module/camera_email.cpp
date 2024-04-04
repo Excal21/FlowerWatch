@@ -1,8 +1,9 @@
+//  Rui Santos
+//  Complete instructions at https://RandomNerdTutorials.com/esp32-cam-projects-ebook/
+
 #include "camera_email.h"
 
 SMTPSession smtp;
-
-//https://randomnerdtutorials.com/esp32-cam-send-photos-email/
 
 void initCamera(void){   //Kamera inicializálása
   camera_config_t config;
