@@ -3,11 +3,20 @@
 Előfordult már veled, hogy megfeledkeztél a növényedről? Itt a megoldás!
 Ebben a projektben egy figyelőrendszert készítek, mellyel webes felületen követheted növénykéd napi tevékenységét. Beállításaid alapján a rendszer jelezni fog emailben, hogy meg kell locsolni a növényt, így nem fogod többé elfelejteni az öntözést.
 
-A projekt az ipar 4.0 tantárgyam beadandó feladataként készül, de szeretném, hogy ezen túlmutasson a későbbiekben és egy hobbisták számára könnyen összerakható és könnyen használható rendszer legyen a végeredmény.
+A projekt az ipar 4.0 tantárgyam beadandó feladataként készült.
 
 <p align="center">
-    <img src="cactus.jpg" />
+    <img src="cactus.jpg" width="50%"/>
 </p>
+
+Köszönet a következő könyvtárak és oldalak íróinak, tulajdonosainak
+-------
+- https://www.flaticon.com/uicons</br>
+- https://github.com/tzapu/WiFiManager</br>
+- https://github.com/adafruit/Adafruit_MCP3008</br>
+- https://github.com/beegee-tokyo/DHTesp</br>
+- https://github.com/mobizt/ESP-Mail-Client</br>
+- https://randomnerdtutorials.com/esp32-cam-send-photos-email/
 
 Változtatások
 -------
